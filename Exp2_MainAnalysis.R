@@ -1,18 +1,18 @@
 ## ---------------------------
 ##
-## Script name: Exp1_MainAnalysis
+## Script name: Exp2_MainAnalysis
 ##
-## Purpose of script: Experiment 1 data cleaning and EDA and linear mixed model development
+## Purpose of script: Experiment 2 data cleaning and EDA and linear mixed model development
 ##
 ## Author: Chuanxiuyue (Carol) He
 ##
-## Date Created: 2020-12-20
+## Date Created: 2020-12-22
 ##
 ## Email: carol.hcxy@gmail.com
 ## 
 ## Content: 
-##      1. Load Experiment 1 Data
-##      2. Experiment 1 Data Cleaning
+##      1. Load Experiment 2 Data
+##      2. Experiment 2 Data Cleaning
 ##      3. Accuracy Descriptive Statistics
 ##      4. Response Time Descriptive Statistics
 ##      5. d' Calculation
@@ -21,7 +21,8 @@
 ##      8. Bias Descriptive Statistics
 ##      9. Spatial Ability
 ##      10. Spatial Ability Descriptive Statistics
-##      11. Linear Regression
+##      11. Correlation comparisons
+##      12. Linear Regression
 ## ---------------------------
 
 
@@ -46,7 +47,7 @@ library(rstatix) #chi-squared tests for mixed model
 
 ## ---------------------------
 
-#####----------Load Experiment 1 Data----------#####
+#####----------Load Experiment 2 Data----------#####
 
 ## read txt files
 txt_files_ls <-  list.files(
@@ -73,7 +74,7 @@ combined_df <- do.call("rbind",
                        )
 
 
-#####----------Experiment 1 Data Cleaning----------#####
+#####----------Experiment 2 Data Cleaning----------#####
 
 ## finds -99999 values in the accuracy column and sets them to NA so that we can omit them and saving a new data frame
 combined_df$accuracy[combined_df$accuracy == -99999] <- 0
@@ -96,25 +97,25 @@ names(v_perf) [2] <- "VerbTaskAcc"
 
 
 ## performance on the structure detection task:
-Exp1_sdt <- aggregate(combined_df$accuracy,
+Exp2_sdt <- aggregate(combined_df$accuracy,
                   list(subject=combined_df$subject,
                        rotation=combined_df$rotation,
                        startsym=combined_df$startSym,
                        change=combined_df$change), 
                   mean)
 
-names(Exp1_sdt)[5] <- "acc"
+names(Exp2_sdt)[5] <- "acc"
 
 
 ## poor performance in the concurrent verbal task
 v_perf <- v_perf[v_perf$VerbTaskAcc>=0.8,]
 
 ## exclude low verb_acc participants 
-Exp1_sdt <- Exp1_sdt[Exp1_sdt$subject %in% v_perf$subject,]
+Exp2_sdt <- Exp2_sdt[Exp2_sdt$subject %in% v_perf$subject,]
 
 #####------Accuracy Descriptive Statistics-----#####
 
-Exp1_descrp <- Exp1_sdt%>%
+Exp2_descrp <- Exp2_sdt%>%
   group_by(rotation,startsym,change) %>%
   dplyr::summarise(
     count = n(),
@@ -127,6 +128,7 @@ Exp1_descrp <- Exp1_sdt%>%
 ## remove time-out trials
 combined_df<- combined_df[combined_df$subject %in% v_perf$subject,]
 combined_df_noTimeOut <- combined_df[complete.cases(combined_df[, "time"]),]
+
 
 TIME <- aggregate(combined_df_noTimeOut$time,
                   list(subject=combined_df_noTimeOut$subject,
@@ -144,7 +146,7 @@ TIME$change <-recode(TIME$change,
                      '0' = 'no change',
                      '1' = 'change')
 ## descriptive statistics
-Exp1_RT_summary <- TIME%>%
+Exp2_RT_summary <- TIME%>%
   group_by(rotation,startsym,change) %>%
   dplyr::summarise(
     count = n(),
@@ -153,8 +155,8 @@ Exp1_RT_summary <- TIME%>%
     se = sd/sqrt(count)
   )
 ## visualization - line graph with error bars
-#jpeg("Exp1_rt_line.jpeg", width = 8, height = 4.5, units = 'in', res = 300)
-ggplot(Exp1_RT_summary,aes(x=rotation,y=mean,color=change,shape=change))+
+#jpeg("Exp2_rt_line.jpeg", width = 8, height = 4.5, units = 'in', res = 300)
+ggplot(Exp2_RT_summary,aes(x=rotation,y=mean,color=change,shape=change))+
   geom_point(size=3)+
   geom_line()+
   geom_errorbar(aes(ymin=mean-se, ymax=mean+se), width=10,position=position_dodge(1))+
@@ -168,15 +170,15 @@ ggplot(Exp1_RT_summary,aes(x=rotation,y=mean,color=change,shape=change))+
 
 #####----------d' Calculation----------#####
 
-## recast Exp1 Structure Change Detection data
-re_Exp1_sdt<- 
-  recast(Exp1_sdt, 
+## recast Exp2 Structure Change Detection data
+re_Exp2_sdt<- 
+  recast(Exp2_sdt, 
          subject ~ rotation + startsym + change, 
          id.var = c("subject", "rotation",  "startsym", "change"))
 
-names(re_Exp1_sdt) <- c("subject","r10_as_s","r10_as_d","r10_sym_s","r10_sym_d","r60_as_s","r60_as_d","r60_sym_s","r60_sym_d","r120_as_s","r120_as_d","r120_sym_s","r120_sym_d")
+names(re_Exp2_sdt) <- c("subject","r10_as_s","r10_as_d","r10_sym_s","r10_sym_d","r60_as_s","r60_as_d","r60_sym_s","r60_sym_d","r120_as_s","r120_as_d","r120_sym_s","r120_sym_d")
 
-Exp1_fh <- re_Exp1_sdt %>%
+Exp2_fh <- re_Exp2_sdt %>%
   mutate_at(c("r10_as_s","r10_sym_s",
               "r60_as_s","r60_sym_s",
               "r120_as_s","r120_sym_s"),
@@ -186,7 +188,7 @@ Exp1_fh <- re_Exp1_sdt %>%
   mutate_at(vars(contains('_f'),contains('_h')),
             list(z=~qnorm(.)))
 
-Exp1_fh <- Exp1_fh%>%
+Exp2_fh <- Exp2_fh%>%
   mutate(r10.as.dp=r10_as_d_h_z-r10_as_s_f_z)%>%
   mutate(r10.sym.dp=r10_sym_d_h_z-r10_sym_s_f_z)%>%
   mutate(r60.as.dp=r60_as_d_h_z-r60_as_s_f_z)%>%
@@ -194,11 +196,11 @@ Exp1_fh <- Exp1_fh%>%
   mutate(r120.as.dp=r120_as_d_h_z-r120_as_s_f_z)%>%
   mutate(r120.sym.dp=r120_sym_d_h_z-r120_sym_s_f_z)
 
-Exp1_dpr <- Exp1_fh%>%
+Exp2_dpr <- Exp2_fh%>%
   select(subject,contains('dp'))
 
 ## wide to long
-Exp1_dpr_long <- reshape(Exp1_dpr,
+Exp2_dpr_long <- reshape(Exp2_dpr,
                          direction = 'long',
                          idvar = 'subject',
                          varying = c(2:7),
@@ -206,25 +208,25 @@ Exp1_dpr_long <- reshape(Exp1_dpr,
                          times=c('r10', 'r60','r120'),
                          v.names=c('as.dp', 'sym.dp'))
 
-Exp1_dpr_long <- gather(Exp1_dpr_long,
+Exp2_dpr_long <- gather(Exp2_dpr_long,
                         symmetry,
                         dp,
                         as.dp:sym.dp,
                         factor_key = T)
 
-Exp1_dpr_long$rotation <- as.factor(Exp1_dpr_long$rotation)
-Exp1_dpr_long$subject <- as.factor(Exp1_dpr_long$subject)
-Exp1_dpr_long$symmetry <-
-  recode(Exp1_dpr_long$symmetry,
+Exp2_dpr_long$rotation <- as.factor(Exp2_dpr_long$rotation)
+Exp2_dpr_long$subject <- as.factor(Exp2_dpr_long$subject)
+Exp2_dpr_long$symmetry <-
+  recode(Exp2_dpr_long$symmetry,
          'as.dp'='asymmetrical',
          'sym.dp'='symmetrical')
-Exp1_dpr_long$rotation <-
-  recode(Exp1_dpr_long$rotation,
+Exp2_dpr_long$rotation <-
+  recode(Exp2_dpr_long$rotation,
          'r10'='10-degree',
          'r60'='60-degree',
          'r120'='120-degree')
 
-Exp1_dpr_long <-Exp1_dpr_long%>%
+Exp2_dpr_long <-Exp2_dpr_long%>%
   mutate(rotation = forcats::fct_relevel(rotation, c("10-degree", "60-degree", "120-degree")))%>%
   mutate(rotation_num = dplyr::case_when(
     rotation == '10-degree'  ~ 10,
@@ -233,7 +235,7 @@ Exp1_dpr_long <-Exp1_dpr_long%>%
 
 #####--------d' Descriptive Statistics--------#####
 
-Exp1_dpr_summary <- Exp1_dpr_long%>%
+Exp2_dpr_summary <- Exp2_dpr_long%>%
   group_by(rotation_num, symmetry) %>%
   dplyr::summarise(
     count = n(),
@@ -242,8 +244,8 @@ Exp1_dpr_summary <- Exp1_dpr_long%>%
   )
 
 ## visualize dprime by symmetry and rotation
-#jpeg("Exp1_dpr_line.jpeg", width = 8, height = 4.5, units = 'in', res = 300)
-ggplot(Exp1_dpr_summary,aes(x=rotation_num,y=mean,color=symmetry,shape=symmetry))+
+#jpeg("Exp2_dpr_line.jpeg", width = 8, height = 4.5, units = 'in', res = 300)
+ggplot(Exp2_dpr_summary,aes(x=rotation_num,y=mean,color=symmetry,shape=symmetry))+
   geom_point(size=3)+
   geom_line()+
   geom_errorbar(aes(ymin=mean-se, ymax=mean+se), width=10,position=position_dodge(0))+
@@ -256,7 +258,7 @@ ggplot(Exp1_dpr_summary,aes(x=rotation_num,y=mean,color=symmetry,shape=symmetry)
 
 #####----------Bias Calculation----------#####
 
-Exp1_bias <- Exp1_fh %>%
+Exp2_bias <- Exp2_fh %>%
   mutate(r10.as.b=exp(-1*(r10_as_d_h_z^2-r10_as_s_f_z^2)*0.5))%>%
   mutate(r10.sym.b=exp(-1*(r10_sym_d_h_z^2-r10_sym_s_f_z^2)*0.5))%>%
   mutate(r60.as.b=exp(-1*(r60_as_d_h_z^2-r60_as_s_f_z^2)*0.5))%>%
@@ -266,29 +268,29 @@ Exp1_bias <- Exp1_fh %>%
   select(subject,r10.as.b,r10.sym.b,r60.as.b,r60.sym.b,r120.as.b,r120.sym.b)
 
 ## wide to long
-Exp1_bias_long <- reshape(Exp1_bias,
+Exp2_bias_long <- reshape(Exp2_bias,
                           direction = 'long',
                           idvar = 'subject',
                           varying = c(2:7),
                           timevar='rotation',
                           times=c('r10', 'r60','r120'),
                           v.names=c('as.b', 'sym.b'))
-Exp1_bias_long <- gather(Exp1_bias_long,
+Exp2_bias_long <- gather(Exp2_bias_long,
                          symmetry,
                          bias,
                          as.b:sym.b,
                          factor_key = T)
 
-Exp1_bias_long$rotation <- as.factor(Exp1_bias_long$rotation)
-Exp1_bias_long$subject <- as.factor(Exp1_bias_long$subject)
-Exp1_bias_long <-Exp1_bias_long%>%
+Exp2_bias_long$rotation <- as.factor(Exp2_bias_long$rotation)
+Exp2_bias_long$subject <- as.factor(Exp2_bias_long$subject)
+Exp2_bias_long <-Exp2_bias_long%>%
   mutate(rotation = 
            forcats::fct_relevel(rotation, 
                                 c("r10", "r60", "r120")))
 
 #####----------Bias Descriptive Statistics----------#####
 
-Exp1_bias_long%>%
+Exp2_bias_long%>%
   group_by(rotation, symmetry) %>%
   dplyr::summarise(
     count = n(),
@@ -298,77 +300,103 @@ Exp1_bias_long%>%
 
 #####----------Spatial Ability----------#####
 
-Exp1 <- read.spss('Exp1.sav',to.data.frame = T)
-Exp1_psy <- Exp1%>%
-  select(subject,PF,CC,MRT_M,MRT_O)%>%
-  mutate(MRT=MRT_M+MRT_O)
+Exp2 <- read.spss('Exp2.sav',to.data.frame = T)
+Exp2_psy <- Exp2%>%
+  select(subject,PF,CC,VR,RAPM)
 
 ## merge spatial ability score with structure detection score
-Exp1_psy <- re_Exp1_sdt%>%
-  merge(Exp1_psy,.,by="subject")%>%
+Exp2_psy <- re_Exp2_sdt%>%
+  merge(Exp2_psy,.,by="subject")%>%
+  mutate(all.Acc.s=rowSums(.[c("r10_sym_s","r60_sym_s","r120_sym_s","r10_as_s","r60_as_s","r120_as_s")])/6)%>%
+  mutate(all.Acc.d=rowSums(.[c("r10_sym_d","r60_sym_d","r120_sym_d","r10_as_d","r60_as_d","r120_as_d")])/6)%>%
   mutate(sym.Acc.s=rowSums(.[c("r10_sym_s","r60_sym_s","r120_sym_s")])/3)%>%
   mutate(sym.Acc.d=rowSums(.[c("r10_sym_d","r60_sym_d","r120_sym_d")])/3)%>%
   mutate(as.Acc.s=rowSums(.[c("r10_as_s","r60_as_s","r120_as_s")])/3)%>%
   mutate(as.Acc.d=rowSums(.[c("r10_as_d","r60_as_d","r120_as_d")])/3)%>%
+  mutate(all.Acc.f_z=ifelse(all.Acc.s==1,qnorm(1/240),qnorm(1-all.Acc.s)))%>%
+  mutate(all.Acc.h_z=ifelse(all.Acc.d==1,qnorm(1-1/240),qnorm(all.Acc.d)))%>%
   mutate(sym.Acc.f_z=ifelse(sym.Acc.s==1,qnorm(1/120),qnorm(1-sym.Acc.s)))%>%
   mutate(sym.Acc.h_z=ifelse(sym.Acc.d==1,qnorm(1-1/120),qnorm(sym.Acc.d)))%>%
   mutate(as.Acc.f_z=ifelse(as.Acc.s==1,qnorm(1/120),qnorm(1-as.Acc.s)))%>%
   mutate(as.Acc.h_z=ifelse(as.Acc.d==1,qnorm(1-1/120),qnorm(as.Acc.d)))%>%
+  mutate(all.Dp=all.Acc.h_z-all.Acc.f_z)%>%
   mutate(sym.Dp=sym.Acc.h_z-sym.Acc.f_z)%>%
   mutate(as.Dp=as.Acc.h_z-as.Acc.f_z)%>%
-  select(subject,sym.Dp,as.Dp,PF,CC,MRT_M,MRT_O,MRT)
+  select(subject,all.Dp,sym.Dp,as.Dp,PF,CC,VR,RAPM)
 
 #####--Spatial Ability Descriptive Statistics---#####
 
-psych::describe(Exp1_psy[,-1])
+psych::describe(Exp2_psy[,-1])
 
 ## correlations between different spatial measures
-cor.test(Exp1_psy$MRT_M,Exp1_psy$MRT_O)
-cor.test(Exp1_psy$PF,Exp1_psy$MRT)
-cor.test(Exp1_psy$CC,Exp1_psy$MRT)
+cor.test(Exp2_psy$sym.Dp,Exp2_psy$PF)
+cor.test(Exp2_psy$as.Dp,Exp2_psy$PF)
+cor.test(Exp2_psy$sym.Dp,Exp2_psy$CC)
+cor.test(Exp2_psy$as.Dp,Exp2_psy$CC)
+
+#####----------Correlation Comparisons----------#####
+diff.corr <- function( r1, n1, r2, n2 ){
+  
+  Z1 <- 0.5 * log( (1+r1)/(1-r1) )
+  Z2 <- 0.5 * log( (1+r2)/(1-r2) )
+  
+  diff   <- Z1 - Z2
+  SEdiff <- sqrt( 1/(n1 - 3) + 1/(n2 - 3) )
+  diff.Z  <- diff/SEdiff
+  cat( "diff.Z", diff.Z , "\n" )
+  
+  p <- 2*pnorm( abs(diff.Z), lower=F)
+  cat( "Two-tailed p-value", p , "\n" )
+}
+
+diff.corr( r1=0.41, n1=42, r2=0.25, n2=42)
+
 
 #####----------Linear Regression----------#####
 
 ## data preparation
-Exp1_spab <- merge(Exp1_psy,
-                   Exp1_dpr_long,
+Exp2_spab <- merge(Exp2_psy,
+                   Exp2_dpr_long,
                    by="subject")%>%
   mutate(SA=(scale(PF,center = T,scale = T)+
               scale(CC,center = T,scale = T))/2)%>%
   mutate(rotation_s=scale(rotation_num,
                           center=T,scale=T))%>%
-  select(subject,rotation_s,rotation_num,symmetry,dp,SA)
+  mutate(VR_s=scale(VR,center=TRUE,scale=TRUE))%>%
+  mutate(RAPM_s=scale(RAPM,center=TRUE,scale=TRUE))%>%
+  select(subject,rotation_s,symmetry,dp,SA,VR_s,RAPM_s)
 
-Exp1_spab$subject <- as.factor(Exp1_spab$subject)
-Exp1_spab$symmetry <- as.factor(Exp1_spab$symmetry)
-Exp1_spab$symmetry <- relevel(Exp1_spab$symmetry,ref= 'asymmetrical')
+Exp2_spab$subject <- as.factor(Exp2_spab$subject)
+Exp2_spab$symmetry <- as.factor(Exp2_spab$symmetry)
+Exp2_spab$symmetry <- relevel(Exp2_spab$symmetry,ref= 'asymmetrical')
 
 ## linear mixed model (subject as a random factor)
 
-Exp1.lmm1 <- lmer(dp ~ 
+Exp2.lmm1 <- lmer(dp ~ 
                     rotation_s * symmetry+
                     SA+SA:symmetry+SA:rotation_s+
+                    VR_s+RAPM_s+
                     (1|subject), 
-                  data = Exp1_spab, 
+                  data = Exp2_spab, 
                   REML = F)
 
-summary(Exp1.lmm1)
-Anova(Exp1.lmm1)
-confint(Exp1.lmm1)
+summary(Exp2.lmm1)
+Anova(Exp2.lmm1)
+confint(Exp2.lmm1)
 
 ## random slope model
-Exp1.lmm2 <- lmer(dp ~ rotation_s+symmetry+ (1+symmetry|subject)+rotation_s:symmetry, data = Exp1_spab, REML = F)
-summary(Exp1.lmm2)
-Anova(Exp1.lmm2)
+Exp2.lmm2 <- lmer(dp ~ rotation_s+symmetry+ (1+symmetry|subject)+rotation_s:symmetry, data = Exp2_spab, REML = F)
+summary(Exp2.lmm2)
+Anova(Exp2.lmm2)
 
-cor.test(coef(Exp1.lmm2)[[1]]$symmetrysymmetrical,
-         Exp1_psy$PF)
-cor.test(coef(Exp1.lmm2)[[1]]$symmetrysymmetrical,
-         Exp1_psy$CC)
-cor.test(coef(Exp1.lmm2)[[1]]$symmetrysymmetrical,
-         Exp1_psy$MRT)
-
-
+cor.test(coef(Exp2.lmm2)[[1]]$symmetrysymmetrical,
+         Exp2_psy$PF)
+cor.test(coef(Exp2.lmm2)[[1]]$symmetrysymmetrical,
+         Exp2_psy$CC)
+cor.test(coef(Exp2.lmm2)[[1]]$symmetrysymmetrical,
+         Exp2_psy$VR)
+cor.test(coef(Exp2.lmm2)[[1]]$symmetrysymmetrical,
+         Exp2_psy$RAPM)
 
 
 

@@ -2,7 +2,7 @@
 ##
 ## Script name: Exp1_SupplementaryAnalysis
 ##
-## Purpose of script: Based on the main analysis. Other analyses done for Experiment 1
+## Purpose of script: Based on the main analysis, other analyses done for Experiment 1. (need to run main analysis first)
 ##
 ## Author: Chuanxiuyue (Carol) He
 ##
@@ -68,7 +68,7 @@ Anova(Exp1.lmm4)
 Exp1_rt_correct <- combined_df_noTimeOut[combined_df_noTimeOut$accuracy==1,]
 
 ## proportion of the removed trials
-(nrow(combined_df)-nrow(cExp1_rt_correct))/nrow(combined_df)
+(nrow(combined_df)-nrow(Exp1_rt_correct))/nrow(combined_df)
 
 ## aggregate to get mean response time
 TIME <- aggregate(Exp1_rt_correct$time,
@@ -99,3 +99,18 @@ summary(Exp1.lmmRT)
 Anova(Exp1.lmmRT)
 confint(Exp1.lmmRT)
 
+#####----------Gender Differences----------#####
+
+## get gender information
+Exp1_Gender <- combined_df[,c("subject","sex")]
+Exp1_psy_sex <- unique(merge(Exp1_psy,Exp1_Gender,by="subject"))
+
+## gender distribution
+table(Exp1_psy_sex$sex)
+
+## test gender differences
+t.test(sym.Dp~sex,data=Exp1_psy_sex)
+t.test(as.Dp~sex,data=Exp1_psy_sex)
+t.test(PF~sex,data=Exp1_psy_sex)
+t.test(CC~sex,data=Exp1_psy_sex)
+t.test(MRT~sex,data=Exp1_psy_sex)
