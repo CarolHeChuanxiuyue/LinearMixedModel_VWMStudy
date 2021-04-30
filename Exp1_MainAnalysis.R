@@ -1,15 +1,27 @@
 ## ---------------------------
 ##
-## Script name: Symmetry_r_script
+## Script name: Exp1_MainAnalysis
 ##
-## Purpose of script: 
+## Purpose of script: Experiment 1 data cleaning and EDA and linear mixed model development
 ##
 ## Author: Chuanxiuyue (Carol) He
 ##
 ## Date Created: 2020-12-20
 ##
 ## Email: carol.hcxy@gmail.com
-##
+## 
+## Content: 
+##      1. Load Experiment 1 Data
+##      2. Experiment 1 Data Cleaning
+##      3. Accuracy Descriptive Statistics
+##      4. Response Time Descriptive Statistics
+##      5. d' Calculation
+##      6. d' Descriptive Statistics
+##      7. Bias Calculation
+##      8. Bias Descriptive Statistics
+##      9. Spatial Ability
+##      10. Spatial Ability Descriptive Statistics
+##      11. Linear Regression
 ## ---------------------------
 
 
@@ -110,7 +122,50 @@ Exp1_descrp <- Exp1_sdt%>%
     se = sd(acc, na.rm = TRUE)/sqrt(count)
   )
 
-#####----------d' calculation----------#####
+#####------Response Time Descriptive Statistics-----#####
+
+## remove time-out trials
+combined_df_noTimeOut <- combined_df[complete.cases(combined_df[, "time"]),]
+
+TIME <- aggregate(combined_df_noTimeOut$time,
+                  list(subject=combined_df_noTimeOut$subject,
+                       rotation=combined_df_noTimeOut$rotation,
+                       startsym=combined_df_noTimeOut$startSym,
+                       change=combined_df_noTimeOut$change), 
+                  mean)
+
+names(TIME)[5] <- "RT"
+
+TIME$startsym <-recode(TIME$startsym,
+                       'as'='asymmetrical',
+                       'sym'='symmetrical')
+TIME$change <-recode(TIME$change,
+                     '0' = 'no change',
+                     '1' = 'change')
+## descriptive statistics
+Exp1_RT_summary <- TIME%>%
+  group_by(rotation,startsym,change) %>%
+  dplyr::summarise(
+    count = n(),
+    mean = mean(RT, na.rm = TRUE),
+    sd = sd(RT, na.rm = TRUE),
+    se = sd/sqrt(count)
+  )
+## visualization - line graph with error bars
+#jpeg("Exp1_rt_line.jpeg", width = 8, height = 4.5, units = 'in', res = 300)
+ggplot(Exp1_RT_summary,aes(x=rotation,y=mean,color=change,shape=change))+
+  geom_point(size=3)+
+  geom_line()+
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), width=10,position=position_dodge(1))+
+  ylim(0.5,1.5)+
+  ylab('response time(s)')+
+  scale_x_continuous(name ="rotation",breaks=c(10,60,120),limits=c(0,130))+
+  facet_wrap(~startsym)+
+  theme_classic(base_size = 20)+
+  scale_color_manual(values=c('#999999','#E69F00'))
+#dev.off()
+
+#####----------d' Calculation----------#####
 
 ## recast Exp1 Structure Change Detection data
 re_Exp1_sdt<- 
@@ -120,7 +175,7 @@ re_Exp1_sdt<-
 
 names(re_Exp1_sdt) <- c("subject","r10_as_s","r10_as_d","r10_sym_s","r10_sym_d","r60_as_s","r60_as_d","r60_sym_s","r60_sym_d","r120_as_s","r120_as_d","r120_sym_s","r120_sym_d")
 
-Exp1_dpr <- re_Exp1_sdt %>%
+Exp1_fh <- re_Exp1_sdt %>%
   mutate_at(c("r10_as_s","r10_sym_s",
               "r60_as_s","r60_sym_s",
               "r120_as_s","r120_sym_s"),
@@ -130,13 +185,15 @@ Exp1_dpr <- re_Exp1_sdt %>%
   mutate_at(vars(contains('_f'),contains('_h')),
             list(z=~qnorm(.)))
 
-Exp1_dpr <- Exp1_dpr%>%
+Exp1_fh <- Exp1_fh%>%
   mutate(r10.as.dp=r10_as_d_h_z-r10_as_s_f_z)%>%
   mutate(r10.sym.dp=r10_sym_d_h_z-r10_sym_s_f_z)%>%
   mutate(r60.as.dp=r60_as_d_h_z-r60_as_s_f_z)%>%
   mutate(r60.sym.dp=r60_sym_d_h_z-r60_sym_s_f_z)%>%
   mutate(r120.as.dp=r120_as_d_h_z-r120_as_s_f_z)%>%
-  mutate(r120.sym.dp=r120_sym_d_h_z-r120_sym_s_f_z)%>%
+  mutate(r120.sym.dp=r120_sym_d_h_z-r120_sym_s_f_z)
+
+Exp1_dpr <- Exp1_fh%>%
   select(subject,contains('dp'))
 
 ## wide to long
@@ -196,6 +253,47 @@ ggplot(Exp1_dpr_summary,aes(x=rotation_num,y=mean,color=symmetry,shape=symmetry)
   scale_color_manual(values=c('#999999','#E69F00'))
 #dev.off()
 
+#####----------Bias Calculation----------#####
+
+Exp1_bias <- Exp1_fh %>%
+  mutate(r10.as.b=exp(-1*(r10_as_d_h_z^2-r10_as_s_f_z^2)*0.5))%>%
+  mutate(r10.sym.b=exp(-1*(r10_sym_d_h_z^2-r10_sym_s_f_z^2)*0.5))%>%
+  mutate(r60.as.b=exp(-1*(r60_as_d_h_z^2-r60_as_s_f_z^2)*0.5))%>%
+  mutate(r60.sym.b=exp(-1*(r60_sym_d_h_z^2-r60_sym_s_f_z^2)*0.5))%>%
+  mutate(r120.as.b=exp(-1*(r120_as_d_h_z^2-r120_as_s_f_z^2)*0.5))%>%
+  mutate(r120.sym.b=exp(-1*(r120_sym_d_h_z^2-r120_sym_s_f_z^2)*0.5))%>%
+  select(subject,r10.as.b,r10.sym.b,r60.as.b,r60.sym.b,r120.as.b,r120.sym.b)
+
+## wide to long
+Exp1_bias_long <- reshape(Exp1_bias,
+                          direction = 'long',
+                          idvar = 'subject',
+                          varying = c(2:7),
+                          timevar='rotation',
+                          times=c('r10', 'r60','r120'),
+                          v.names=c('as.b', 'sym.b'))
+Exp1_bias_long <- gather(Exp1_bias_long,
+                         symmetry,
+                         bias,
+                         as.b:sym.b,
+                         factor_key = T)
+
+Exp1_bias_long$rotation <- as.factor(Exp1_bias_long$rotation)
+Exp1_bias_long$subject <- as.factor(Exp1_bias_long$subject)
+Exp1_bias_long <-Exp1_bias_long%>%
+  mutate(rotation = 
+           forcats::fct_relevel(rotation, 
+                                c("r10", "r60", "r120")))
+
+#####----------Bias Descriptive Statistics----------#####
+
+Exp1_bias_long%>%
+  group_by(rotation, symmetry) %>%
+  dplyr::summarise(
+    count = n(),
+    mean = mean(bias, na.rm = TRUE),
+    se = sd(bias, na.rm = TRUE)/sqrt(count)
+  )
 
 #####----------Spatial Ability----------#####
 
@@ -228,7 +326,7 @@ cor.test(Exp1_psy$MRT_M,Exp1_psy$MRT_O)
 cor.test(Exp1_psy$PF,Exp1_psy$MRT)
 cor.test(Exp1_psy$CC,Exp1_psy$MRT)
 
-#####----------linear regression----------#####
+#####----------Linear Regression----------#####
 
 ## data preparation
 Exp1_spab <- merge(Exp1_psy,
@@ -242,7 +340,7 @@ Exp1_spab <- merge(Exp1_psy,
 
 Exp1_spab$subject <- as.factor(Exp1_spab$subject)
 Exp1_spab$symmetry <- as.factor(Exp1_spab$symmetry)
-Exp1_spab$symmetry <- relevel(Exp1_spab$symmetry,ref= 'symmetrical')
+Exp1_spab$symmetry <- relevel(Exp1_spab$symmetry,ref= 'asymmetrical')
 
 ## linear mixed model (subject as a random factor)
 
