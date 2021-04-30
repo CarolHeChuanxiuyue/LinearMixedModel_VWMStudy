@@ -18,18 +18,18 @@
 ## set working directory for Mac and PC
 
 setwd("~/CarolHe/")      # Carol's working directory (mac)
-setwd("C:/Users/carolhe/")    # Tim's working directory (PC)
+setwd("C:/Users/carolhe/")    # if using PC
 
 ## ---------------------------
 
-## load up the packages we will need:  (uncomment as required)
-## if never used the following packages before, use install.packages() to install
+## load up the packages
+## use install.packages() to install new packages
 library(tidyverse)
 library(reshape2)
 library(foreign) # read sav data
 library(psych) # descriptive statistics
 library(lme4) #linear mixed model
-library(rstatix)
+library(rstatix) #chi-squared tests for mixed model
 
 
 ## ---------------------------
@@ -44,17 +44,20 @@ txt_files_ls <-  list.files(
 txt_files_df <- lapply(txt_files_ls, 
                        function(x) 
                          { 
-                         tmp <- try(read.table(file = x, 
-                                               header = TRUE, 
-                                               sep=";")) 
-                         if (!inherits(tmp, 'try-error')) 
+                         tmp <- try(read.table(
+                           file = x, 
+                           header = TRUE, 
+                           sep=";")) 
+                         if (!inherits(tmp, 
+                                       'try-error')) 
                            tmp
                          }
                        )
 
 ## combine all txt files together
 combined_df <- do.call("rbind", 
-                       lapply(txt_files_df, as.data.frame)
+                       lapply(txt_files_df, 
+                              as.data.frame)
                        )
 
 
