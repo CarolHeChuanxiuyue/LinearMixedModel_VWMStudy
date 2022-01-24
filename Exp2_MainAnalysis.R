@@ -304,6 +304,27 @@ Exp2 <- read.spss('Exp2.sav',to.data.frame = T)
 Exp2_psy <- Exp2%>%
   select(subject,PF,CC,VR,RAPM)
 
+## new:
+Exp2_psy <- re_Exp2_sdt%>%
+  merge(df2_c,.,by="subject")%>%
+  mutate(all.Acc.s=rowSums(.[c("r10_sym_s","r60_sym_s","r120_sym_s","r10_as_s","r60_as_s","r120_as_s")])/6)%>%
+  mutate(all.Acc.d=rowSums(.[c("r10_sym_d","r60_sym_d","r120_sym_d","r10_as_d","r60_as_d","r120_as_d")])/6)%>%
+  mutate(sym.Acc.s=rowSums(.[c("r10_sym_s","r60_sym_s","r120_sym_s")])/3)%>%
+  mutate(sym.Acc.d=rowSums(.[c("r10_sym_d","r60_sym_d","r120_sym_d")])/3)%>%
+  mutate(as.Acc.s=rowSums(.[c("r10_as_s","r60_as_s","r120_as_s")])/3)%>%
+  mutate(as.Acc.d=rowSums(.[c("r10_as_d","r60_as_d","r120_as_d")])/3)%>%
+  mutate(all.Acc.f_z=ifelse(all.Acc.s==1,qnorm(1/240),qnorm(1-all.Acc.s)))%>%
+  mutate(all.Acc.h_z=ifelse(all.Acc.d==1,qnorm(1-1/240),qnorm(all.Acc.d)))%>%
+  mutate(sym.Acc.f_z=ifelse(sym.Acc.s==1,qnorm(1/120),qnorm(1-sym.Acc.s)))%>%
+  mutate(sym.Acc.h_z=ifelse(sym.Acc.d==1,qnorm(1-1/120),qnorm(sym.Acc.d)))%>%
+  mutate(as.Acc.f_z=ifelse(as.Acc.s==1,qnorm(1/120),qnorm(1-as.Acc.s)))%>%
+  mutate(as.Acc.h_z=ifelse(as.Acc.d==1,qnorm(1-1/120),qnorm(as.Acc.d)))%>%
+  mutate(all.Dp=all.Acc.h_z-all.Acc.f_z)%>%
+  mutate(sym.Dp=sym.Acc.h_z-sym.Acc.f_z)%>%
+  mutate(as.Dp=as.Acc.h_z-as.Acc.f_z)%>%
+  select(subject,all.Dp,sym.Dp,as.Dp,pf_score,PF_SAV,cc_score,CC_SAV,total_vr_score,VR_SAV)
+##new^
+
 ## merge spatial ability score with structure detection score
 Exp2_psy <- re_Exp2_sdt%>%
   merge(Exp2_psy,.,by="subject")%>%
@@ -371,6 +392,42 @@ Exp2_spab$symmetry <- as.factor(Exp2_spab$symmetry)
 Exp2_spab$symmetry <- relevel(Exp2_spab$symmetry,ref= 'asymmetrical')
 
 ## linear mixed model (subject as a random factor)
+
+test <- merge(v_perf,
+              Exp2_spab,
+              by="subject")%>%
+  mutate(v_perf_c=scale(VerbTaskAcc,
+                          center=T,scale=T))%>%
+  select(-VerbTaskAcc)
+
+Exp2.lmm1 <- lmer(dp ~ 
+                    rotation_s * symmetry+
+                    SA+SA:symmetry+SA:rotation_s+
+                    VR_s+RAPM_s+v_perf_c+
+                    (1|subject), 
+                  data = test, 
+                  REML = F)
+summary(Exp2.lmm1)
+Anova(Exp2.lmm1)
+confint(Exp2.lmm1)
+
+
+library(BayesFactor)
+GenBF <- generalTestBF(dp ~ 
+                         rotation_s * symmetry+
+                         SA+SA:symmetry+
+                         SA:rotation_s+
+                         VR_s+RAPM_s+v_perf_c +
+                         subject, 
+                       data=test, whichRandom="subject")
+GenBF
+
+GenBF1 <- generalTestBF(dp ~ 
+                          rotation_s * symmetry+
+                          SA+SA:symmetry+SA:rotation_s+
+                          VR_s+RAPM_s+subject, 
+                       data=Exp2_spab, whichRandom="subject",neverExclude="subject")
+GenBF1
 
 Exp2.lmm1 <- lmer(dp ~ 
                     rotation_s * symmetry+
