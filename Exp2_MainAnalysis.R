@@ -6,7 +6,7 @@
 ##
 ## Author: Chuanxiuyue (Carol) He
 ##
-## Date Created: 2020-12-22
+## Date Created: 2020-12-22 / Major Updated: 2022 - 02 - 10
 ##
 ## Email: carol.hcxy@gmail.com
 ## 
@@ -46,6 +46,39 @@ library(rstatix) #chi-squared tests for mixed model
 
 
 ## ---------------------------
+
+subj <- factor(1:49)
+with_group1 <- c("sym","asym")
+with_group2 <- c(-1.18,0.07,1.25)
+obs_cov <- rnorm(49, 0, 1) 
+
+subj_full <- rep(subj,6)
+spatial_full <- rep(obs_cov,6)
+wit_grp1_full <- rep(rep(with_group1,each=49),3)
+wit_grp2_full <- rep(rep(with_group2,each=98),1)
+covars <- data.frame(id=subj_full, sa = spatial_full,symmetry=wit_grp1_full,rotation=wit_grp2_full)
+
+
+nsub <-  49
+## Random intercepts for participants
+V2 <- list(0.3)
+## residual variance
+res <- 0.3
+#assume effect size d=.2 (small effect size partial 0.01)
+d <- .2
+d^2/(d^2+4)
+coeffi <- d/sqrt(sum(res,V2[[1]]))
+## Intercept and slopes for symmetry, rotation, sym:rot
+fixed <- c(1.5,coeffi,coeffi,coeffi,coeffi)
+
+model <- makeLmer(y ~ symmetry*rotation + sa + (1|id), fixef=fixed, VarCorr=V2, sigma=res, data=covars)
+model
+
+sim_interaction <- powerSim(model, nsim=100, test = fcompare(y~rotation+symmetry + sa + (1|id)))
+sim_interaction
+
+sim_sa <- powerSim(model, nsim=100, test = fcompare(y~rotation*symmetry + (1|id)))
+sim_sa
 
 #####----------Load Experiment 2 Data----------#####
 
@@ -298,62 +331,71 @@ Exp2_bias_long%>%
     se = sd(bias, na.rm = TRUE)/sqrt(count)
   )
 
-#####----------Spatial Ability----------#####
 
-Exp2 <- read.spss('Exp2.sav',to.data.frame = T)
-Exp2_psy <- Exp2%>%
-  select(subject,PF,CC,VR,RAPM)
+#####----------Psychometrics Ability----------#####
+###Note: running psychometrics processing code.
 
-## new:
-Exp2_psy <- re_Exp2_sdt%>%
-  merge(df2_c,.,by="subject")%>%
-  mutate(all.Acc.s=rowSums(.[c("r10_sym_s","r60_sym_s","r120_sym_s","r10_as_s","r60_as_s","r120_as_s")])/6)%>%
-  mutate(all.Acc.d=rowSums(.[c("r10_sym_d","r60_sym_d","r120_sym_d","r10_as_d","r60_as_d","r120_as_d")])/6)%>%
-  mutate(sym.Acc.s=rowSums(.[c("r10_sym_s","r60_sym_s","r120_sym_s")])/3)%>%
-  mutate(sym.Acc.d=rowSums(.[c("r10_sym_d","r60_sym_d","r120_sym_d")])/3)%>%
-  mutate(as.Acc.s=rowSums(.[c("r10_as_s","r60_as_s","r120_as_s")])/3)%>%
-  mutate(as.Acc.d=rowSums(.[c("r10_as_d","r60_as_d","r120_as_d")])/3)%>%
-  mutate(all.Acc.f_z=ifelse(all.Acc.s==1,qnorm(1/240),qnorm(1-all.Acc.s)))%>%
-  mutate(all.Acc.h_z=ifelse(all.Acc.d==1,qnorm(1-1/240),qnorm(all.Acc.d)))%>%
-  mutate(sym.Acc.f_z=ifelse(sym.Acc.s==1,qnorm(1/120),qnorm(1-sym.Acc.s)))%>%
-  mutate(sym.Acc.h_z=ifelse(sym.Acc.d==1,qnorm(1-1/120),qnorm(sym.Acc.d)))%>%
-  mutate(as.Acc.f_z=ifelse(as.Acc.s==1,qnorm(1/120),qnorm(1-as.Acc.s)))%>%
-  mutate(as.Acc.h_z=ifelse(as.Acc.d==1,qnorm(1-1/120),qnorm(as.Acc.d)))%>%
-  mutate(all.Dp=all.Acc.h_z-all.Acc.f_z)%>%
-  mutate(sym.Dp=sym.Acc.h_z-sym.Acc.f_z)%>%
-  mutate(as.Dp=as.Acc.h_z-as.Acc.f_z)%>%
-  select(subject,all.Dp,sym.Dp,as.Dp,pf_score,PF_SAV,cc_score,CC_SAV,total_vr_score,VR_SAV)
-##new^
+#####----------Linear Regression----------#####
 
-## merge spatial ability score with structure detection score
-Exp2_psy <- re_Exp2_sdt%>%
-  merge(Exp2_psy,.,by="subject")%>%
-  mutate(all.Acc.s=rowSums(.[c("r10_sym_s","r60_sym_s","r120_sym_s","r10_as_s","r60_as_s","r120_as_s")])/6)%>%
-  mutate(all.Acc.d=rowSums(.[c("r10_sym_d","r60_sym_d","r120_sym_d","r10_as_d","r60_as_d","r120_as_d")])/6)%>%
-  mutate(sym.Acc.s=rowSums(.[c("r10_sym_s","r60_sym_s","r120_sym_s")])/3)%>%
-  mutate(sym.Acc.d=rowSums(.[c("r10_sym_d","r60_sym_d","r120_sym_d")])/3)%>%
-  mutate(as.Acc.s=rowSums(.[c("r10_as_s","r60_as_s","r120_as_s")])/3)%>%
-  mutate(as.Acc.d=rowSums(.[c("r10_as_d","r60_as_d","r120_as_d")])/3)%>%
-  mutate(all.Acc.f_z=ifelse(all.Acc.s==1,qnorm(1/240),qnorm(1-all.Acc.s)))%>%
-  mutate(all.Acc.h_z=ifelse(all.Acc.d==1,qnorm(1-1/240),qnorm(all.Acc.d)))%>%
-  mutate(sym.Acc.f_z=ifelse(sym.Acc.s==1,qnorm(1/120),qnorm(1-sym.Acc.s)))%>%
-  mutate(sym.Acc.h_z=ifelse(sym.Acc.d==1,qnorm(1-1/120),qnorm(sym.Acc.d)))%>%
-  mutate(as.Acc.f_z=ifelse(as.Acc.s==1,qnorm(1/120),qnorm(1-as.Acc.s)))%>%
-  mutate(as.Acc.h_z=ifelse(as.Acc.d==1,qnorm(1-1/120),qnorm(as.Acc.d)))%>%
-  mutate(all.Dp=all.Acc.h_z-all.Acc.f_z)%>%
-  mutate(sym.Dp=sym.Acc.h_z-sym.Acc.f_z)%>%
-  mutate(as.Dp=as.Acc.h_z-as.Acc.f_z)%>%
-  select(subject,all.Dp,sym.Dp,as.Dp,PF,CC,VR,RAPM)
+## data preparation
+Exp2_spab <- merge(Exp2_psy,
+                   Exp2_dpr_long,
+                   by="subject")%>%
+  mutate(SA=(scale(PP,center = T,scale = T)+
+               scale(CC,center = T,scale = T))/2)%>%
+  mutate(rotation_s=scale(rotation_num,
+                          center=T,scale=T))%>%
+  mutate(VR_s=scale(VR,center=TRUE,scale=TRUE))%>%
+  mutate(RAPM_s=scale(RAPM,center=TRUE,scale=TRUE))%>%
+  dplyr::select(subject,rotation_s,symmetry,dp,SA,VR_s,RAPM_s)
+
+
+Exp2_spab$subject <- as.factor(Exp2_spab$subject)
+Exp2_spab$symmetry <- as.factor(Exp2_spab$symmetry)
+Exp2_spab$symmetry <- relevel(Exp2_spab$symmetry,ref= 'asymmetrical')
+
+## linear mixed model (subject as a random factor)
+
+
+Exp2.lmm1 <- lmer(dp ~ 
+                    rotation_s * symmetry+SA+SA:rotation_s+SA:symmetry+VR_s+ RAPM_s+
+                    ((rotation_s * symmetry)|subject), 
+                  data = Exp2_spab, 
+                  REML = F)
+summary(Exp2.lmm1)
+
+library(effectsize)
+eta_squared(Exp2.lmm1)
+Anova(Exp2.lmm1)
+confint(Exp2.lmm1)
+
+#####----------Dprime Bayes Factor----------#####
+library(BayesFactor)
+set.seed(123)
+bf1 = lmBF(dp ~ rotation_s * symmetry+SA+SA:rotation_s+SA:symmetry+VR_s+ RAPM_s+subject,
+              data=Exp2_spab, whichRandom = c("subject"))
+bf2 = lmBF(dp ~ rotation_s * symmetry+SA+SA:rotation_s+VR_s+ RAPM_s+subject,
+              data=Exp2_spab, whichRandom = c("subject"))
+bf3 = lmBF(dp ~ rotation_s * symmetry+SA+SA:symmetry+VR_s+ RAPM_s+subject,
+              data=Exp2_spab, whichRandom = c("subject"))
+bf1/bf2
+bf1/bf3
+
+bf4 = lmBF(dp ~ rotation_s * symmetry+SA+SA:rotation_s+SA:symmetry+ RAPM_s+subject,
+           data=Exp2_spab, whichRandom = c("subject"))
+
+bf1/bf4
+
+bf5 = lmBF(dp ~ rotation_s * symmetry+SA+SA:rotation_s+SA:symmetry+ VR_s+subject,
+           data=Exp2_spab, whichRandom = c("subject"))
+
+bf1/bf5
+
 
 #####--Spatial Ability Descriptive Statistics---#####
 
 psych::describe(Exp2_psy[,-1])
 
-## correlations between different spatial measures
-cor.test(Exp2_psy$sym.Dp,Exp2_psy$PF)
-cor.test(Exp2_psy$as.Dp,Exp2_psy$PF)
-cor.test(Exp2_psy$sym.Dp,Exp2_psy$CC)
-cor.test(Exp2_psy$as.Dp,Exp2_psy$CC)
 
 #####----------Correlation Comparisons----------#####
 diff.corr <- function( r1, n1, r2, n2 ){
@@ -373,23 +415,7 @@ diff.corr <- function( r1, n1, r2, n2 ){
 diff.corr( r1=0.41, n1=42, r2=0.25, n2=42)
 
 
-#####----------Linear Regression----------#####
 
-## data preparation
-Exp2_spab <- merge(Exp2_psy,
-                   Exp2_dpr_long,
-                   by="subject")%>%
-  mutate(SA=(scale(PF,center = T,scale = T)+
-              scale(CC,center = T,scale = T))/2)%>%
-  mutate(rotation_s=scale(rotation_num,
-                          center=T,scale=T))%>%
-  mutate(VR_s=scale(VR,center=TRUE,scale=TRUE))%>%
-  mutate(RAPM_s=scale(RAPM,center=TRUE,scale=TRUE))%>%
-  select(subject,rotation_s,symmetry,dp,SA,VR_s,RAPM_s)
-
-Exp2_spab$subject <- as.factor(Exp2_spab$subject)
-Exp2_spab$symmetry <- as.factor(Exp2_spab$symmetry)
-Exp2_spab$symmetry <- relevel(Exp2_spab$symmetry,ref= 'asymmetrical')
 
 ## linear mixed model (subject as a random factor)
 

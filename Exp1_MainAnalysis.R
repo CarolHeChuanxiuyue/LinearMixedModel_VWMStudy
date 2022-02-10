@@ -2,26 +2,28 @@
 ##
 ## Script name: Exp1_MainAnalysis
 ##
-## Purpose of script: Experiment 1 data cleaning and EDA and linear mixed model development
+## Purpose of script: Experiment 1 data cleaning and EDA and linear mixed model development and evaluation
 ##
 ## Author: Chuanxiuyue (Carol) He
 ##
-## Date Created: 2020-12-20
+## Date Created: 2020-12-20 / Major Updated: 2022 - 02 - 10
 ##
 ## Email: carol.hcxy@gmail.com
 ## 
 ## Content: 
-##      1. Load Experiment 1 Data
-##      2. Experiment 1 Data Cleaning
-##      3. Accuracy Descriptive Statistics
-##      4. Response Time Descriptive Statistics
-##      5. d' Calculation
-##      6. d' Descriptive Statistics
-##      7. Bias Calculation
-##      8. Bias Descriptive Statistics
-##      9. Spatial Ability
-##      10. Spatial Ability Descriptive Statistics
-##      11. Linear Regression
+##      1. Power Analysis
+##      2. Load Experiment 1 Data
+##      3. Experiment 1 Data Cleaning
+##      4. Accuracy Descriptive Statistics
+##      5. Response Time Descriptive Statistics
+##      6. d' Calculation
+##      7. d' Descriptive Statistics
+##      8. Bias Calculation
+##      9. Bias Descriptive Statistics
+##      10. Spatial Ability
+##      11. Spatial Ability Descriptive Statistics
+##      12. Linear Regression
+##      13. Bayes Factor
 ## ---------------------------
 
 
@@ -37,14 +39,55 @@ setwd("C:/Users/carolhe/")    # if using PC
 ## load up the packages
 ## use install.packages() to install new packages
 library(tidyverse)
+library(simr) #power analysis
 library(reshape2)
 library(foreign) # read sav data
 library(psych) # descriptive statistics
+library(splithalf) #reliability
 library(lme4) #linear mixed model
 library(rstatix) #chi-squared tests for mixed model
+library(effectsize) # effect size for mixed model
+library(BayesFactor)
+
 
 
 ## ---------------------------
+## ---------------------------
+
+
+#####----------Power Analysis----------#####
+set.seed(7)
+subj <- factor(1:42)
+with_group1 <- c("sym","asym")
+with_group2 <- c(-1.18,0.07,1.25)
+obs_cov <- rnorm(42, 0, 1) 
+
+subj_full <- rep(subj,6)
+spatial_full <- rep(obs_cov,6)
+wit_grp1_full <- rep(rep(with_group1,each=42),3)
+wit_grp2_full <- rep(rep(with_group2,each=84),1)
+covars <- data.frame(id=subj_full, sa = spatial_full,symmetry=wit_grp1_full,rotation=wit_grp2_full)
+
+## Random intercepts for participants
+V2 <- list(0.3)
+## residual variance
+res <- 0.3
+#assume effect size d=.2 (small effect size partial 0.01)
+d <- .2
+print(paste("partial eta square: ",d^2/(d^2+4)))
+
+## Intercept and slopes for symmetry, rotation, sym:rot
+coeffi <- d/sqrt(sum(res,V2[[1]]))
+fixed <- c(1.5,coeffi,coeffi,coeffi,coeffi)
+
+model <- makeLmer(y ~ symmetry*rotation + sa + (1|id), fixef=fixed, VarCorr=V2, sigma=res, data=covars)
+model
+
+sim_interaction <- powerSim(model, nsim=100, test = fcompare(y~rotation+symmetry + sa + (1|id)))
+sim_interaction
+
+sim_sa <- powerSim(model, nsim=100, test = fcompare(y~rotation*symmetry + (1|id)))
+sim_sa
 
 #####----------Load Experiment 1 Data----------#####
 
@@ -297,52 +340,112 @@ Exp1_bias_long%>%
   )
 
 #####----------Spatial Ability----------#####
+#####-------correct answers------#####
 
-Exp1 <- read.spss('Exp1.sav',to.data.frame = T)
-Exp1_psy <- Exp1%>%
-  select(subject,PF,CC,MRT_M,MRT_O)%>%
-  mutate(MRT=MRT_M+MRT_O)
+########## paper folding
+pp_correct <- c('a','d','b','d','b',
+                'e','a','c','e','e',
+                'c','b','a','e','b',
+                'a','e','d','d','c')
 
-##new:
-Exp1_psy <- re_Exp1_sdt%>%
-  merge(df1_c,.,by="subject")%>%
-  mutate(sym.Acc.s=rowSums(.[c("r10_sym_s","r60_sym_s","r120_sym_s")])/3)%>%
-  mutate(sym.Acc.d=rowSums(.[c("r10_sym_d","r60_sym_d","r120_sym_d")])/3)%>%
-  mutate(as.Acc.s=rowSums(.[c("r10_as_s","r60_as_s","r120_as_s")])/3)%>%
-  mutate(as.Acc.d=rowSums(.[c("r10_as_d","r60_as_d","r120_as_d")])/3)%>%
-  mutate(sym.Acc.f_z=ifelse(sym.Acc.s==1,qnorm(1/120),qnorm(1-sym.Acc.s)))%>%
-  mutate(sym.Acc.h_z=ifelse(sym.Acc.d==1,qnorm(1-1/120),qnorm(sym.Acc.d)))%>%
-  mutate(as.Acc.f_z=ifelse(as.Acc.s==1,qnorm(1/120),qnorm(1-as.Acc.s)))%>%
-  mutate(as.Acc.h_z=ifelse(as.Acc.d==1,qnorm(1-1/120),qnorm(as.Acc.d)))%>%
-  mutate(sym.Dp=sym.Acc.h_z-sym.Acc.f_z)%>%
-  mutate(as.Dp=as.Acc.h_z-as.Acc.f_z)%>%
-  select(subject,sym.Dp,as.Dp,pf_score,PF_SAV,cc_score,CC_SAV)
+########## cube comparisons
+cc_correct <- c('d','d','d','s','d',
+                's','s','s','s','d',
+                'd','s','s','s','s',
+                's','d','d','d','d',
+                'd','s','d','s','s',
+                'd','s','s','d','s',
+                'd','d','s','d','d',
+                's','d','d','d','s',
+                'd','d')
 
-##new^
+########## verbal reasoning
+vr_correct <- c('a','h','c','f','c',
+                'k','c','g','b','j',
+                'a','g','e','g','d',
+                'j','e','j','b','k',
+                'a','g','e','j','c',
+                'k','c','g','c','h',
+                'd','g','b','k','c',
+                'j','c','j','e','f')
 
-## merge spatial ability score with structure detection score
-Exp1_psy <- re_Exp1_sdt%>%
-  merge(Exp1_psy,.,by="subject")%>%
-  mutate(sym.Acc.s=rowSums(.[c("r10_sym_s","r60_sym_s","r120_sym_s")])/3)%>%
-  mutate(sym.Acc.d=rowSums(.[c("r10_sym_d","r60_sym_d","r120_sym_d")])/3)%>%
-  mutate(as.Acc.s=rowSums(.[c("r10_as_s","r60_as_s","r120_as_s")])/3)%>%
-  mutate(as.Acc.d=rowSums(.[c("r10_as_d","r60_as_d","r120_as_d")])/3)%>%
-  mutate(sym.Acc.f_z=ifelse(sym.Acc.s==1,qnorm(1/120),qnorm(1-sym.Acc.s)))%>%
-  mutate(sym.Acc.h_z=ifelse(sym.Acc.d==1,qnorm(1-1/120),qnorm(sym.Acc.d)))%>%
-  mutate(as.Acc.f_z=ifelse(as.Acc.s==1,qnorm(1/120),qnorm(1-as.Acc.s)))%>%
-  mutate(as.Acc.h_z=ifelse(as.Acc.d==1,qnorm(1-1/120),qnorm(as.Acc.d)))%>%
-  mutate(sym.Dp=sym.Acc.h_z-sym.Acc.f_z)%>%
-  mutate(as.Dp=as.Acc.h_z-as.Acc.f_z)%>%
-  select(subject,sym.Dp,as.Dp,PF,CC,MRT_M,MRT_O,MRT)
+########## scoring functions
+scoring <- function(ans,rubrics,penalty){
+  score = NULL
+  score[1] = ans[1]
+  for (i in c(1:(length(ans)-1))){
+    score[i+1] = ifelse(ans[i+1]==0,0,
+                        ifelse(ans[i+1]== rubrics[i],1,penalty))
+    
+  }
+  return(score)
+}
+########## valid total score for each participant
+valid_score <- function(data,valid_participants){
+  data$V1 <- as.numeric((data$V1))
+  data_valid <- data[data$V1%in%valid_participants$subject,]
+  data_valid <- as.data.frame(apply(data_valid,2,as.numeric))
+  data_valid['total'] <- apply(data_valid[,c(2:length(data))],1,sum)
+  return(data_valid)
+}
 
-#####--Spatial Ability Descriptive Statistics---#####
+########## paper folding
+##########>>>>> data reading and scoring
+C1PP<- read.csv("3C1PP.csv")
+C1PP[C1PP=='']<- 0
 
-psych::describe(Exp1_psy[,-1])
+test <- as.data.frame(t(apply(C1PP,1,scoring,rubrics=pp_correct,penalty=-0.25)))
+data_valid <- valid_score(test,valid_participants = v_perf)
 
-## correlations between different spatial measures
-cor.test(Exp1_psy$MRT_M,Exp1_psy$MRT_O)
-cor.test(Exp1_psy$PF,Exp1_psy$MRT)
-cor.test(Exp1_psy$CC,Exp1_psy$MRT)
+##########>>>>> descriptive stats
+Exp1_pp_tot <- data_valid[,c(1,22)]
+psych::describe(Exp1_pp_tot$total)
+
+##########>>>>> permutation based split-half reliability
+data_valid_long <- gather(data_valid[,c(1:21)], trialID, score, V2:V21, factor_key=TRUE)
+colnames(data_valid_long)[1] <- 'subject'
+
+set.seed(123)
+splithalf(data=data_valid_long,
+          outcome = "accuracy",
+          score = "average",
+          halftype = "random",
+          permutations = 5000,
+          var.ACC = "score",
+          var.trialnum = "trialID",
+          var.participant = "subject",
+          average="mean")
+
+########## cube comparisons
+##########>>>>> data reading and scoring
+C1CC<- read.csv("3C1CC.csv")
+C1CC[C1CC=='']<- 0
+
+test <- as.data.frame(t(apply(C1CC,1,scoring,rubrics=cc_correct,penalty=-1)))
+data_valid <- valid_score(test,valid_participants = v_perf)
+
+##########>>>>> descriptive stats
+Exp1_cc_tot <- data_valid[,c(1,44)]
+psych::describe(Exp1_cc_tot$total)
+
+##########>>>>> permutation based split-half reliability
+data_valid_long <- gather(data_valid[,c(1:43)], trialID, score, V2:V43, factor_key=TRUE)
+colnames(data_valid_long)[1] <- 'subject'
+
+splithalf(data=data_valid_long,
+          outcome = "accuracy",
+          score = "average",
+          halftype = "random",
+          permutations = 5000,
+          var.ACC = "score",
+          var.trialnum = "trialID",
+          var.participant = "subject",
+          average="mean")
+
+Exp1_psy <- Exp1_pp_tot%>%
+  merge(.,Exp1_cc_tot,by='V1')
+colnames(Exp1_psy) <- c('subject','PF','CC')
+cor.test(Exp1_psy$PF,Exp1_psy$CC)
 
 #####----------Linear Regression----------#####
 
@@ -351,7 +454,7 @@ Exp1_spab <- merge(Exp1_psy,
                    Exp1_dpr_long,
                    by="subject")%>%
   mutate(SA=(scale(PF,center = T,scale = T)+
-              scale(CC,center = T,scale = T))/2)%>%
+               scale(CC,center = T,scale = T))/2)%>%
   mutate(rotation_s=scale(rotation_num,
                           center=T,scale=T))%>%
   select(subject,rotation_s,rotation_num,symmetry,dp,SA)
@@ -364,189 +467,26 @@ Exp1_spab$symmetry <- relevel(Exp1_spab$symmetry,ref= 'asymmetrical')
 
 #(link)[https://cran.r-project.org/web/packages/effectsize/vignettes/from_test_statistics.html]
 
-
-Exp1.lmm1 <- lmer(dp ~ 
-                    rotation_s * symmetry+
-                    SA+SA:symmetry+SA:rotation_s+
-                    (1|subject), 
+Exp1.lmm <- lmer(dp ~ 
+                    rotation_s * symmetry+SA+SA:symmetry+SA:rotation_s+
+                    ((rotation_s * symmetry)|subject), 
                   data = Exp1_spab, 
                   REML = F)
-summary()
-
-Exp1.lmmr <- lmer(dp ~ 
-                    rotation_s * symmetry+
-                    SA+SA:symmetry+SA:rotation_s+SA:symmetry:rotation_s+
-                    (1|subject), 
-                  data = Exp1_spab, 
-                  REML = F)
-summary(Exp1.lmmr)
-
-Exp1_spab['low_SA'] = Exp1_spab$SA<median(Exp1_spab$SA)
-Exp1.lmmr <- lmer(dp ~ 
-                    rotation_s * symmetry+
-                    low_SA+low_SA:symmetry+low_SA:rotation_s+
-                    (rotation_s*symmetry|subject), 
-                  data = Exp1_spab, 
-                  REML = F)
-summary(Exp1.lmmr)
-Anova(Exp1.lmmr, type = 3)
-
-install.packages("afex")
-library(afex)
-
-aov_fit <- aov_car(dp ~ rotation_s * symmetry+
-                     SA+SA:symmetry+SA:rotation_s + Error(subject/(rotation_s*symmetry)),
-                   data = Exp1_spab,observed = c("SA"),factorize = FALSE,
-                   anova_table = list(correction = "none", es = "pes")
-)
-aov_fit
-eta_squared(aov_fit)
-head(Exp1_spab)
-Exp1_spab$rotation_num <- as.factor(Exp1_spab$rotation_num)
-aov_fit4 <- aov_4(dp ~ rotation_num * symmetry+
-        SA+SA:symmetry+SA:rotation_num + ((rotation_num * symmetry)|subject),
-      data = Exp1_spab,observed = c("SA"),factorize = FALSE)
-aov_fit4
-eta_squared(aov_fit4)
+summary(Exp1.lmm)
+effectsize::eta_squared(Exp1.lmm)
+Anova(Exp1.lmm)
 
 #####----------Dprime Bayes Factor----------#####
-library(BayesFactor)
-bf = lmBF(dp ~ rotation_s*symmetry+subject, data=Exp1_spab, whichRandom="subject")
-bf
-plot(bf)
 
-
+set.seed(123)
 bf1 = lmBF(dp ~ rotation_s * symmetry+
-               SA+SA:symmetry+SA:rotation_s+subject, data=Exp1_spab, whichRandom = "subject")
+               SA+SA:symmetry+SA:rotation_s+subject, data=Exp1_spab, whichRandom = c("subject"))
 bf2 = lmBF(dp ~ rotation_s * symmetry+
-             SA+SA:rotation_s+subject, data=Exp1_spab, whichRandom = "subject")
+             SA+SA:rotation_s+subject, data=Exp1_spab, whichRandom = c("subject"))
+
 bf3 = lmBF(dp ~ rotation_s * symmetry+
              SA+SA:symmetry+subject, data=Exp1_spab, whichRandom = "subject")
-bf2/bf1
-bf3/bf1
+bf1/bf2
+bf1/bf3
 
 
-
-library(effectsize)
-effectsize::F_to_eta2(
-  f = aov_fit$anova_table$F,
-  df = aov_fit$anova_table$`num Df`,
-  df_error = aov_fit$anova_table$`den Df`
-)
-
-powerSim(aov_fit,fixed("SA:symmetry","lr"),nsim=1000)
-powerSim(aov_fit,fixed("SA:rotation_s","lr"),nsim=1000)
-powerSim(aov_fit,fixed("SA","lr"),nsim=1000)
-powerSim(aov_fit,fixed("symmetry","lr"),nsim=10)
-
-library(lme4)
-library(rstatix)
-## subjects clustered by their spatial ability
-Exp1.lmm1a <- lmer(dp ~ 
-                     rotation_s * symmetry+ SA + SA:symmetry + SA:rotation_s+
-                     ((rotation_s*symmetry)|subject), 
-                   data = Exp1_spab, 
-                   REML = F)
-summary(Exp1.lmm1a)
-powerSim(Exp1.lmm1a,fixed("SA","lr"),nsim=100)
-powerSim(Exp1.lmm1a,fixed("symmetrysymmetrical:SA","lr"),nsim=100)
-fixef(Exp1.lmm1a)['symmetrysymmetrical:SA']
-fixef(Exp1.lmm1a)['symmetrysymmetrical:SA'] <- 0.2
-powerSim(Exp1.lmm1a,fixed("symmetrysymmetrical:SA","t"),nsim=100) 
-
-Anova(Exp1.lmm1a)
-install.packages('simr')
-library('simr')
-powerSim(Exp1.lmm1a,fixed("SA:symmetry","chisq"),nsim=1000) 
-
-simmodel <- extend(Exp1.lmm1a,along='subject',n=100)
-simmodel2 <- extend(Exp1.lmm1a,within='SA+symmetry',n=100)
-pc2 <- powerCurve(Exp1.lmm1a,test=fixed("SA","chisq"),along="subject", breaks=c(20,30,40))
-print(pc2)
-plot(pc2)
-powerSim(Exp1.lmm1a,nsim=100,test=fixed("SA","chisq"))
-
-fixef(Exp1.lmm1a)['symmetrysymmetrical:SA'] <- 0.2
-simmodel2 <- extend(Exp1.lmm1a,within='SA+symmetry',n=50)
-pc2 <- powerCurve(simmodel2,test=fixed("symmetrysymmetrical:SA","chisq"), 
-                  along ="subject", breaks=c(20,30,40,50))
-print(pc2)
-plot(pc2)
-
-# install mixedpower
-
-install.packages("cli")
-install.packages("devtools")
-
-# load library
-library(mixedpower)
-
-model <-Exp1.lmm1 # which model do we want to simulate power for?
-data <- Exp1_spab # data used to fit the model
-fixed_effects <- c("rotation_s", "symmetry","SA") # all fixed effects specified in FLPmodel
-simvar <- "subject" # which random effect do we want to vary in the simulation?
-
-steps <- c(20, 30, 40, 50, 60) # which sample sizes do we want to look at?
-critical_value <- 2 # which t/z value do we want to use to test for significance?
-n_sim <- 1000 # how many single simulations should be used to estimate power?
-
-Exp1_spab$subject <- as.numeric(Exp1_spab$subject)
-
-power_FLP <- mixedpower(model = Exp1.lmmr, data = Exp1_spab,
-                        fixed_effects = c("rotation_s", "symmetry","low_SA"),
-                        simvar = "subject", steps = c(20,30,40),
-                        critical_value = 2, n_sim = 1000)
-power_FLP
-
-summary(Exp1.lmm1)
-#install.packages('effectsize')
-library(effectsize)
-#install.packages('lmerTest')
-library(lmerTest)
-anova(Exp1.lmm1)
-effectsize::F_to_eta2(
-  f = c(33.36, 282.84,9.00,19.14,0.65,1.36),
-  df = 1,
-  df_error = c(210,210,42,210,210)
-)
-
-## random slope model
-Exp1.lmm2 <- lmer(dp ~ rotation_s+symmetry+ (1+symmetry|subject)+rotation_s:symmetry, data = Exp1_spab, REML = F)
-summary(Exp1.lmm2)
-Anova(Exp1.lmm2)
-
-cor.test(coef(Exp1.lmm2)[[1]]$symmetrysymmetrical,
-         Exp1_psy$PF)
-cor.test(coef(Exp1.lmm2)[[1]]$symmetrysymmetrical,
-         Exp1_psy$CC)
-cor.test(coef(Exp1.lmm2)[[1]]$symmetrysymmetrical,
-         Exp1_psy$MRT)
-
-
-subj <- factor(1:42)
-with_group1 <- c("sym","asym")
-with_group2 <- c(-1.18,0.07,1.25)
-
-subj_full <- rep(subj,6)
-wit_grp1_full <- rep(rep(with_group1,each=42),3)
-wit_grp2_full <- rep(rep(with_group2,each=84),1)
-covars <- data.frame(id=subj_full, symmetry=wit_grp1_full,rotation=wit_grp2_full)
-
-
-nsub <-  42
-## Random intercepts for participants
-V2 <- list(0.3)
-## residual variance
-res <- 0.3
-#assume effect size d=.2 (large)
-d <- .2
-d^2/(d^2+4)
-coeffi <- d/sqrt(sum(res,V2[[1]]))
-## Intercept and slopes for symmetry, rotation, sym:rot
-fixed <- c(1.5,coeffi,coeffi,coeffi)
-
-model <- makeLmer(y ~ symmetry*rotation + (1|id), fixef=fixed, VarCorr=V2, sigma=res, data=covars)
-model
-
-sim_interaction <- powerSim(model, nsim=100, test = fcompare(y~rotation+symmetry + (1|id)))
-sim_interaction

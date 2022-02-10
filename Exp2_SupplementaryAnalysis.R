@@ -78,15 +78,15 @@ confint(Exp2.lmmRT)
 
 
 #####----------Gender Differences----------#####
-Exp2_Gender <- combined_df[,c("subject","sex")]
+Exp2_Gender <- unique(combined_df[,c("subject","sex")])
 
 Exp2_psy_sex <- unique(merge(Exp2_psy,Exp2_Gender,by="subject"))
 
 table(Exp2_psy_sex$sex)
 
-t.test(sym.Dp~sex,data=Exp2_psy_sex)
-t.test(as.Dp~sex,data=Exp2_psy_sex)
-t.test(PF~sex,data=Exp2_psy_sex)
 t.test(CC~sex,data=Exp2_psy_sex)
+t.test(PP~sex,data=Exp2_psy_sex)
+t.test(VR~sex,data=Exp2_psy_sex)
+t.test(RAPM~sex,data=Exp2_psy_sex)
 
 lsr::cohensD(CC~sex,data=Exp2_psy_sex)
