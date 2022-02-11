@@ -6,12 +6,12 @@
 ##
 ## Author: Chuanxiuyue (Carol) He
 ##
-## Date Created: 2020-12-20 / Major Updated: 2022 - 02 - 10
+## Date Created: 2020-12-20 / Major Updated: 2022-02-10
 ##
 ## Email: carol.hcxy@gmail.com
 ## 
 ## Content: 
-##      1. Power Analysis
+##      1. Power Analysis - Simulation
 ##      2. Load Experiment 1 Data
 ##      3. Experiment 1 Data Cleaning
 ##      4. Accuracy Descriptive Statistics
@@ -480,9 +480,9 @@ Anova(Exp1.lmm)
 
 set.seed(123)
 bf1 = lmBF(dp ~ rotation_s * symmetry+
-               SA+SA:symmetry+SA:rotation_s+subject, data=Exp1_spab, whichRandom = c("subject"))
+               SA+SA:symmetry+SA:rotation_s+subject, data=Exp1_spab, whichRandom = "subject")
 bf2 = lmBF(dp ~ rotation_s * symmetry+
-             SA+SA:rotation_s+subject, data=Exp1_spab, whichRandom = c("subject"))
+             SA+SA:rotation_s+subject, data=Exp1_spab, whichRandom = "subject")
 
 bf3 = lmBF(dp ~ rotation_s * symmetry+
              SA+SA:symmetry+subject, data=Exp1_spab, whichRandom = "subject")

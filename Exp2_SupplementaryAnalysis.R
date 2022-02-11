@@ -6,7 +6,7 @@
 ##
 ## Author: Chuanxiuyue (Carol) He
 ##
-## Date Created: 2020-12-23
+## Date Created: 2020-12-23 / Major Updated: 2022-02-10
 ##
 ## Email: carol.hcxy@gmail.com
 ##
@@ -33,12 +33,11 @@ library(lsr) # effect size
 #####----------Linear Mixed Model II----------#####
 
 ## without verbal intelligence and general intelligence
-Exp2.lmm3 <- lmer(dp ~ rotation_s * symmetry+SA+SA:rotation_s+symmetry:SA+ (1|subject), data = Exp2_spab)
-summary(Exp2.lmm3)
-Anova(Exp2.lmm3)
+Exp2.lmm2 <- lmer(dp ~ rotation_s * symmetry+SA+SA:rotation_s+symmetry:SA+ ((rotation_s * symmetry)|subject), data = Exp2_spab)
+summary(Exp2.lmm2)
 
 ## compare it with the main model reported in the paper
-anova(Exp2.lmm3,Exp2.lmm1)
+anova(Exp2.lmm2,Exp2.lmm)
 
 #####----------Response Time (RT) of Correct Trials----------#####
 
@@ -66,15 +65,19 @@ Exp2_spabRT <- merge(TIME,Exp2_psy,by="subject")%>%
   select(subject,rotation_s,startsym,change,RT,SA)
 
 Exp2_spabRT$change <- as.factor(Exp2_spabRT$change)
+Exp2_spabRT$startsym <- as.factor(Exp2_spabRT$startsym)
 Exp2_spabRT <- within(Exp2_spabRT,change <- relevel(change,ref="0"))
 Exp2_spabRT <- within(Exp2_spabRT,startsym <- relevel(startsym,ref="as"))
 
 #####----------Response Time Linear Mixed Model----------#####
 
-Exp2.lmmRT <- lmer(RT ~ rotation_s*startsym*change+ (1|subject), data = Exp2_spabRT, REML = F)
+Exp2.lmmRT <- lmer(RT ~ rotation_s*startsym*change+SA+
+                     ((rotation_s*startsym*change)|subject), 
+                   data = Exp2_spabRT, REML = F)
 summary(Exp2.lmmRT)
+effectsize::eta_squared(Exp2.lmmRT)
 Anova(Exp2.lmmRT)
-confint(Exp2.lmmRT)
+
 
 
 #####----------Gender Differences----------#####
@@ -85,7 +88,7 @@ Exp2_psy_sex <- unique(merge(Exp2_psy,Exp2_Gender,by="subject"))
 table(Exp2_psy_sex$sex)
 
 t.test(CC~sex,data=Exp2_psy_sex)
-t.test(PP~sex,data=Exp2_psy_sex)
+t.test(PF~sex,data=Exp2_psy_sex)
 t.test(VR~sex,data=Exp2_psy_sex)
 t.test(RAPM~sex,data=Exp2_psy_sex)
 
