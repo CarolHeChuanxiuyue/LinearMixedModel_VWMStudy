@@ -6,19 +6,28 @@ The link to the article will be updated here after this publication is available
  **R libraries used:**
 ```
 library(tidyverse)
+library(simr) #power analysis
 library(reshape2)
 library(foreign) # read sav data
 library(psych) # descriptive statistics
+library(splithalf) #reliability
 library(lme4) #linear mixed model
-library(rstatix)
+library(rstatix) #chi-squared tests for mixed model
+library(effectsize) # effect size for mixed model
+library(BayesFactor)
 ```
 
 **Main Functions:**
- 1. combining multiple txt files
- 2. aggragate values
- 3. data cleaning and wrangling
- 4. descriptive statistics summary
- 5. calculate d-prime based on signal detection theory
- 6. visualization using ggplot2
- 7. correlation
- 6. linear mixed models with interaction terms
+      1. Power Analysis - Simulation
+      2. Load Experiment 1 Data
+      3. Experiment 1 Data Cleaning
+      4. Accuracy Descriptive Statistics
+      5. Response Time Descriptive Statistics
+      6. d' Calculation
+      7. d' Descriptive Statistics
+      8. Bias Calculation
+      9. Bias Descriptive Statistics
+      10. Spatial Ability
+      11. Spatial Ability Descriptive Statistics
+      12. Linear Regression
+      13. Bayes Factor
