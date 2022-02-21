@@ -18,16 +18,16 @@ library(BayesFactor)
 ```
 
 **Main Functions:**
-      1. Power Analysis - Simulation
-      2. Load Experiment 1 Data
-      3. Experiment 1 Data Cleaning
-      4. Accuracy Descriptive Statistics
-      5. Response Time Descriptive Statistics
-      6. d' Calculation
-      7. d' Descriptive Statistics
-      8. Bias Calculation
-      9. Bias Descriptive Statistics
-      10. Spatial Ability
-      11. Spatial Ability Descriptive Statistics
-      12. Linear Regression
-      13. Bayes Factor
+1. Power Analysis - Simulation
+2. Load Experiment 1 Data
+3. Experiment 1 Data Cleaning
+4. Accuracy Descriptive Statistics
+5. Response Time Descriptive Statistics
+6. d' Calculation
+7. d' Descriptive Statistics
+8. Bias Calculation
+9. Bias Descriptive Statistics
+10. Spatial Ability
+11. Spatial Ability Descriptive Statistics
+12. Linear Regression
+13. Bayes Factor
