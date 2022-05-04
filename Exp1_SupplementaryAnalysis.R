@@ -161,4 +161,42 @@ effectsize::eta_squared(Exp1.lmmRT)
 Anova(Exp1.lmmRT)
 
 
+#####----------individual differences in all measures----------#####
+## recast Exp1 Structure Change Detection data
+re_Exp1_sdt<- 
+  recast(Exp1_sdt, 
+         subject ~ change, 
+         id.var = c("subject", "change"),
+         measure.var = "acc",
+         fun.aggregate = mean)
+
+names(re_Exp1_sdt) <- c("subject","same","different")
+
+Exp1_indiv_trait <- re_Exp1_sdt %>%
+  mutate_at("same",
+            list(false=~ifelse(.==1,1/40,1-.)))%>%
+  mutate_at("different",
+            list(hit=~ifelse(.==1,1-(1/40),.)))%>%
+  mutate_at(vars(contains('false'),contains('hit')),
+            list(z=~qnorm(.)))%>%
+  mutate(dp = hit_z - false_z)%>%
+  select(subject,dp)%>%
+  merge(Exp1_indiv,by="subject")
+
+library(PerformanceAnalytics)
+chart.Correlation(
+  Exp1_indiv_trait[,-1],
+  histogram = TRUE,
+)
+
+cor.test(Exp1_indiv_trait$SA,Exp1_indiv_trait$RTmean)
+
+#####----------# of practice repeats----------#####
+
+practicerun <- combined_df%>%group_by(subject)%>%
+  dplyr::summarise(
+    run = mean(nPracticeRuns, na.rm = TRUE),
+  )
+
+unique(practicerun$run)
 

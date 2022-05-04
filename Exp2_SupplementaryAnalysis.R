@@ -93,3 +93,77 @@ t.test(VR~sex,data=Exp2_psy_sex)
 t.test(RAPM~sex,data=Exp2_psy_sex)
 
 lsr::cohensD(CC~sex,data=Exp2_psy_sex)
+
+
+#####----------individual differences in all measures----------#####
+Exp2_data <- combined_df
+
+ggplot(Exp1_data,aes(x=time))+
+  geom_density(data=Exp2_data,aes(x=time),fill="orange",alpha=0.5)+
+  labs(x="Response Time in second",y="density")+
+  theme_bw(base_size=30)
+
+Exp2_RT_indiv <- Exp2_data%>%
+  group_by(subject) %>%
+  dplyr::summarise(
+    count = n(),
+    mean = mean(time, na.rm = TRUE),
+    sd = sd(time, na.rm = TRUE),
+    se = sd/sqrt(count)
+  )
+
+ggplot(Exp1_RT_indiv,aes(x=sd))+
+  geom_density(alpha=0.5,fill="blue")+
+  geom_density(data=Exp2_RT_indiv,aes(x=sd),fill="orange",alpha=0.5)+
+  labs(x="RT-individual standard deviation",y="density")+
+  theme_bw(base_size=30)
+
+t.test(Exp1_RT_indiv$sd,Exp2_RT_indiv$sd)
+t.test(Exp1_RT_indiv$mean,Exp2_RT_indiv$mean)
+
+ggplot(Exp1_RT_indiv,aes(x=mean))+
+  geom_density(alpha=0.5,fill="blue")+
+  geom_density(data=Exp2_RT_indiv,aes(x=mean),fill="orange",alpha=0.5)+
+  labs(x="RT-individual average",y="density")+
+  theme_bw(base_size=30)
+
+psych::describe(Exp2_RT_indiv$mean)
+
+## recast Exp1 Structure Change Detection data
+re_Exp2_sdt<- 
+  recast(Exp2_sdt, 
+         subject ~ change, 
+         id.var = c("subject", "change"),
+         measure.var = "acc",
+         fun.aggregate = mean)
+
+names(re_Exp2_sdt) <- c("subject","same","different")
+
+Exp2_indiv_trait <- re_Exp2_sdt %>%
+  mutate_at("same",
+            list(false=~ifelse(.==1,1/40,1-.)))%>%
+  mutate_at("different",
+            list(hit=~ifelse(.==1,1-(1/40),.)))%>%
+  mutate_at(vars(contains('false'),contains('hit')),
+            list(z=~qnorm(.)))%>%
+  mutate(dp = hit_z - false_z)%>%
+  select(subject,dp)%>%
+  merge(Exp2_indiv,by="subject")
+
+library(PerformanceAnalytics)
+chart.Correlation(
+  Exp2_indiv_trait[,-1],
+  histogram = TRUE,
+)
+
+cor.test(Exp2_indiv_trait$SA,Exp2_indiv_trait$RTmean)
+
+#####----------# of practice repeats----------#####
+
+practicerun <- combined_df%>%group_by(subject)%>%
+  dplyr::summarise(
+    run = mean(nPracticeRuns, na.rm = TRUE),
+  )
+
+hist(practicerun$run)
+unique(practicerun$run)

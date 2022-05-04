@@ -494,17 +494,33 @@ cor.test(Exp2_psy$PF,Exp2_psy$CC)
 Exp2_psy <- Exp2_psy%>%
   mutate(SA=(scale(PF,center = T,scale = T)+
                scale(CC,center = T,scale = T))/2)
+
+Exp2_data <- combined_df
+
+Exp2_RT_indiv <- Exp2_data%>%
+  group_by(subject) %>%
+  dplyr::summarise(
+    count = n(),
+    RTmean = mean(time, na.rm = TRUE),
+    RTsd = sd(time, na.rm = TRUE),
+  )
+
+Exp2_indiv <- merge(Exp2_RT_indiv,Exp2_psy,by="subject")%>%
+  mutate(SA=(scale(PF,center = T,scale = T)+
+               scale(CC,center = T,scale = T))/2)%>%
+  select(subject,RTmean,RTsd,SA,VR,RAPM)
+
+
 cor.test(Exp2_psy$SA,Exp2_psy$VR)
 cor.test(Exp2_psy$SA,Exp2_psy$RAPM)
+
 
 #####----------Linear Regression----------#####
 
 ## data preparation
-Exp2_spab <- merge(Exp2_psy,
+Exp2_spab <- merge(Exp2_indiv,
                    Exp2_dpr_long,
                    by="subject")%>%
-  mutate(SA=(scale(PF,center = T,scale = T)+
-               scale(CC,center = T,scale = T))/2)%>%
   mutate(rotation_s=scale(rotation_num,
                           center=T,scale=T))%>%
   mutate(VR_s=scale(VR,center=TRUE,scale=TRUE))%>%
