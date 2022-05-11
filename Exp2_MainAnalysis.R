@@ -497,12 +497,11 @@ Exp2_psy <- Exp2_psy%>%
 
 Exp2_data <- combined_df
 
-Exp2_RT_indiv <- Exp2_data%>%
+Exp2_RT_indiv <- Exp2_data[Exp2_data$accuracy==1,]%>%
   group_by(subject) %>%
   dplyr::summarise(
-    count = n(),
     RTmean = mean(time, na.rm = TRUE),
-    RTsd = sd(time, na.rm = TRUE),
+    RTsd = sd(time, na.rm = TRUE)
   )
 
 Exp2_indiv <- merge(Exp2_RT_indiv,Exp2_psy,by="subject")%>%

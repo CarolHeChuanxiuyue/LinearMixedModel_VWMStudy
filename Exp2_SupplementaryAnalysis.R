@@ -96,38 +96,24 @@ lsr::cohensD(CC~sex,data=Exp2_psy_sex)
 
 
 #####----------individual differences in all measures----------#####
-Exp2_data <- combined_df
 
-ggplot(Exp1_data,aes(x=time))+
-  geom_density(data=Exp2_data,aes(x=time),fill="orange",alpha=0.5)+
+ggplot(Exp1_data[Exp1_data$accuracy==1,],aes(x=time))+
+  geom_density(fill="blue",alpha = 0.5)+
+  geom_density(data=Exp2_data[Exp2_data$accuracy==1,],aes(x=time),fill="orange",alpha=0.5)+
   labs(x="Response Time in second",y="density")+
   theme_bw(base_size=30)
 
-Exp2_RT_indiv <- Exp2_data%>%
-  group_by(subject) %>%
-  dplyr::summarise(
-    count = n(),
-    mean = mean(time, na.rm = TRUE),
-    sd = sd(time, na.rm = TRUE),
-    se = sd/sqrt(count)
-  )
+mean(Exp1_data[Exp1_data$accuracy==1,]$time)
+mean(Exp2_data[Exp2_data$accuracy==1,]$time)
+sd(Exp1_data[Exp1_data$accuracy==1,]$time)
+sd(Exp2_data[Exp2_data$accuracy==1,]$time)
 
-ggplot(Exp1_RT_indiv,aes(x=sd))+
+ggplot(Exp1_RT_indiv,aes(x=RTmean))+
   geom_density(alpha=0.5,fill="blue")+
-  geom_density(data=Exp2_RT_indiv,aes(x=sd),fill="orange",alpha=0.5)+
-  labs(x="RT-individual standard deviation",y="density")+
-  theme_bw(base_size=30)
-
-t.test(Exp1_RT_indiv$sd,Exp2_RT_indiv$sd)
-t.test(Exp1_RT_indiv$mean,Exp2_RT_indiv$mean)
-
-ggplot(Exp1_RT_indiv,aes(x=mean))+
-  geom_density(alpha=0.5,fill="blue")+
-  geom_density(data=Exp2_RT_indiv,aes(x=mean),fill="orange",alpha=0.5)+
+  geom_density(data=Exp2_RT_indiv,aes(x=RTmean),fill="orange",alpha=0.5)+
   labs(x="RT-individual average",y="density")+
+  xlim(0,3)+
   theme_bw(base_size=30)
-
-psych::describe(Exp2_RT_indiv$mean)
 
 ## recast Exp1 Structure Change Detection data
 re_Exp2_sdt<- 
@@ -155,6 +141,18 @@ chart.Correlation(
   Exp2_indiv_trait[,-1],
   histogram = TRUE,
 )
+
+ggplot(Exp1_indiv_trait,aes(x=SA))+
+  geom_histogram(fill="blue",alpha = 0.5,bins=12)+
+  geom_histogram(data=Exp2_indiv_trait,aes(x=SA),fill="orange",alpha=0.5,bins=12)+
+  labs(x="Spatial Ability",y="Number of People")+
+  theme_bw(base_size=30)
+
+ggplot(Exp1_indiv_trait,aes(x=SA))+
+  geom_density(alpha=0.5,fill="blue")+
+  geom_density(data=Exp2_indiv_trait,aes(x=SA),fill="orange",alpha=0.5)+
+  labs(x="RT-individual average",y="density")+
+  theme_bw(base_size=30)
 
 cor.test(Exp2_indiv_trait$SA,Exp2_indiv_trait$RTmean)
 

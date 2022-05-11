@@ -451,7 +451,7 @@ cor.test(Exp1_psy$PF,Exp1_psy$CC)
 
 Exp1_data <- combined_df
 
-Exp1_RT_indiv <- Exp1_data%>%
+Exp1_RT_indiv <- Exp1_data[Exp1_data$accuracy==1,]%>%
   group_by(subject) %>%
   dplyr::summarise(
     count = n(),
